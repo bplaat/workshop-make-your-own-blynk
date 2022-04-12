@@ -41,7 +41,7 @@
         const ws = new WebSocket('ws://localhost:8080');
         ws.binaryType = 'arraybuffer';
         ws.addEventListener('message', event => {
-            // We use a dataview to read the binairy data
+            // We use a dataview to read the binary data
             const messageView = new DataView(event.data);
 
             // The first byte of our message is the message type

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Station</title>
+    <link rel="shortcut icon" href="data:">
+    <style>body{max-width:960px;margin:0 auto}</style>
+    <script src="chart.min.js"></script>
+</head>
+<body>
+    <h1>Weather Station</h1>
+
+    <h2>Temperature</h2>
+    <canvas id="temperature-chart"></canvas>
+
+    <h2>Humidity</h2>
+    <canvas id="humidity-chart"></canvas>
+
+    <script>
+        // Constants
+        const MESSAGE_TYPE_MEASUREMENTS = 1;
+        const MESSAGE_TYPE_NEW_MEASUREMENT = 2;
+
+        // Measurements array
+        let measurements = [];
+
+        // Temperature chart
+        const temperatureCanvas = document.getElementById('temperature-chart');
+        const temperatureContext = temperatureCanvas.getContext('2d');
+        let temperatureChart;
+
+        function updateTemperatureChart() {
+            // Create temperature chart when not existing
+            if (temperatureChart == undefined) {
+                temperatureChart = new Chart(temperatureContext, {
+                    type: 'line',
+                    data: {
+                        labels: measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        datasets: [{
+                            label: 'Temperature (\u00b0C)',
+                            data: measurements.map(measurement => measurement.temperature),
+                            borderColor: '#74bdcb'
+                        }]
+                    }
+                });
+            }
+
+            // Update chart when it exists
+            else {
+                temperatureChart.data.labels = measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                temperatureChart.data.datasets[0].data = measurements.map(measurement => measurement.temperature);
+                temperatureChart.update();
+            }
+        }
+
+        // Humidity chart
+        const humidityCanvas = document.getElementById('humidity-chart');
+        const humidityContext = humidityCanvas.getContext('2d');
+        let humidityChart;
+
+        function updateHumidityChart() {
+            // Create humidity chart when not existing
+            if (humidityChart == undefined) {
+                humidityChart = new Chart(humidityContext, {
+                    type: 'line',
+                    data: {
+                        labels: measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        datasets: [{
+                            label: 'Humidity (%)',
+                            data: measurements.map(measurement => measurement.humidity),
+                            borderColor: '#ffa384'
+                        }]
+                    }
+                });
+            }
+
+            // Update chart when it exists
+            else {
+                humidityChart.data.labels = measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                humidityChart.data.datasets[0].data = measurements.map(measurement => measurement.humidity);
+                humidityChart.update();
+            }
+        }
+
+        // Websocket connection and listen to messages
+        const ws = new WebSocket('ws://localhost:8080/ws');
+        ws.binaryType = 'arraybuffer';
+        ws.addEventListener('message', event => {
+            // We use a dataview to read the binary data
+            const messageView = new DataView(event.data);
+
+            // The first byte of our message is the message type
+            let pos = 0;
+            const type = messageView.getUint8(pos); pos += 1;
+
+            // At the start we get all the old measurements, parse them and update charts
+            if (type == MESSAGE_TYPE_MEASUREMENTS) {
+                measurements = [];
+                const measurementsLength = messageView.getUint32(pos, true); pos += 4;
+                for (let i = 0; i < measurementsLength; i++) {
+                    const measurement = {};
+                    measurement.id = messageView.getUint32(pos, true); pos += 4;
+                    measurement.temperature = messageView.getFloat32(pos, true); pos += 4;
+                    measurement.humidity = messageView.getFloat32(pos, true); pos += 4;
+                    measurement.created_at = messageView.getUint32(pos, true); pos += 4;
+                    measurements.push(measurement);
+                }
+                updateTemperatureChart();
+                updateHumidityChart();
+            }
+
+            // When we get a new measurement parse it, add it to measurements and update charts
+            if (type == MESSAGE_TYPE_NEW_MEASUREMENT) {
+                const measurement = {};
+                measurement.id = messageView.getUint32(pos, true); pos += 4;
+                measurement.temperature = messageView.getFloat32(pos, true); pos += 4;
+                measurement.humidity = messageView.getFloat32(pos, true); pos += 4;
+                measurement.created_at = messageView.getUint32(pos, true); pos += 4;
+                measurements.push(measurement);
+                updateTemperatureChart();
+                updateHumidityChart();
+            }
+        });
+
+    </script>
+</body>
+</html>
