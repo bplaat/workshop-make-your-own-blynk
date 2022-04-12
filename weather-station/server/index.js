@@ -68,16 +68,18 @@ const server = http.createServer((req, res) => {
         measurements.push(measurement);
 
         // Send connected websocket clients a message
-        const message = new ArrayBuffer(1 + 4 + 4 + 4 + 4);
-        const messageView = new DataView(message);
-        let pos = 0;
-        messageView.setUint8(pos, MESSAGE_TYPE_NEW_MEASUREMENT); pos += 1;
-        messageView.setUint32(pos, measurement.id, true); pos += 4;
-        messageView.setFloat32(pos, measurement.temperature, true); pos += 4;
-        messageView.setFloat32(pos, measurement.humidity, true); pos += 4;
-        messageView.setUint32(pos, measurement.created_at, true); pos += 4;
-        for (const client of clients) {
-            client.ws.send(message);
+        if (clients.length > 0) {
+            const message = new ArrayBuffer(1 + 4 + 4 + 4 + 4);
+            const messageView = new DataView(message);
+            let pos = 0;
+            messageView.setUint8(pos, MESSAGE_TYPE_NEW_MEASUREMENT); pos += 1;
+            messageView.setUint32(pos, measurement.id, true); pos += 4;
+            messageView.setFloat32(pos, measurement.temperature, true); pos += 4;
+            messageView.setFloat32(pos, measurement.humidity, true); pos += 4;
+            messageView.setUint32(pos, measurement.created_at, true); pos += 4;
+            for (const client of clients) {
+                client.ws.send(message);
+            }
         }
 
         // Return success message
