@@ -1,0 +1,5 @@
+#include "config.h"
+
+const char *wifi_ssid = "";
+const char *wifi_password = "";
+const char *api_url = "";

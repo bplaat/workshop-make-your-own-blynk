@@ -27,7 +27,7 @@ wss.on('connection', ws => {
         // When we get a led update message we read the new led state and broadcast it to all other clients
         if (type == MESSAGE_TYPE_LED_UPDATE) {
             ledState = messageView.getUint8(1);
-            console.log(`New led state: ${ledState == 1}`);
+            console.log(`[WS] New led state: ${ledState == 1}`);
 
             // Send the update message to all other clients
             const otherClients = clients.filter(client => client.ws != ws);
@@ -55,4 +55,4 @@ wss.on('connection', ws => {
 });
 
 // Print message when the server is ready
-console.log(`Websocket server is listening on ws://localhost:${SERVER_PORT}/`)
+console.log(`[WS] Websocket server is listening on ws://localhost:${SERVER_PORT}/`);
