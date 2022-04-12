@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime LED Controller</title>
+    <link rel="shortcut icon" href="data:">
+    <style>
+        .button{padding:1em 2em;font-weight:bold}
+        .is-on{background-color:#8f8}
+        .is-off{background-color:#f88}
+    </style>
+</head>
+<body>
+    <h1>Realtime LED Controller</h1>
+    <p><button id="led-button" class="button">Connecting...</button></p>
+
+    <script>
+        // Constants
+        const MESSAGE_TYPE_LED_UPDATE = 1;
+
+        // Select HTML elements
+        const ledButton = document.getElementById('led-button');
+
+        // The led state
+        let ledState;
+        function updateLedState(newLedState) {
+            ledState = newLedState;
+
+            ledButton.textContent = ledState ? 'ON' : 'OFF';
+            if (ledState) {
+                ledButton.classList.add('is-on');
+                ledButton.classList.remove('is-off');
+            } else {
+                ledButton.classList.add('is-off');
+                ledButton.classList.remove('is-on');
+            }
+        }
+
+        // Websocket connection and listen to messages
+        const ws = new WebSocket('ws://localhost:8080');
+        ws.binaryType = 'arraybuffer';
+        ws.addEventListener('message', event => {
+            // We use a dataview to read the binairy data
+            const messageView = new DataView(event.data);
+
+            // The first byte of our message is the message type
+            const type = messageView.getUint8(0);
+
+            // If the message is a led update message update the led state
+            if (type == MESSAGE_TYPE_LED_UPDATE) {
+                updateLedState(messageView.getUint8(1) == 1);
+            }
+        });
+
+        // Listen to button clicks
+        ledButton.addEventListener('click', () => {
+            // When we are not connected to the server ignore click
+            if (ws.readyState != WebSocket.OPEN) return;
+
+            // Toggle LED state
+            updateLedState(!ledState);
+
+            // Send led update message to server
+            const message = new ArrayBuffer(2);
+            const messageView = new DataView(message);
+            messageView.setUint8(0, MESSAGE_TYPE_LED_UPDATE);
+            messageView.setUint8(1, ledState);
+            ws.send(message);
+        });
+    </script>
+</body>
+</html>
