@@ -94,6 +94,7 @@ const server = http.createServer((req, res) => {
 // Listen to HTTP upgrade requests (websockets use this)
 server.on('upgrade', (req, socket, head) => {
     const { pathname } = new URL(req.url, `http://localhost:${SERVER_PORT}/`);
+    console.log(`[HTTP] ${req.method} UPGRADE ${pathname}`);
 
     // Upgrade HTTP request to a websocket connection and to our websocket server
     if (pathname === '/ws') {

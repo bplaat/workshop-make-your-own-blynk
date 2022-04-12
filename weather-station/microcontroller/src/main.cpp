@@ -5,7 +5,7 @@
 #include "config.h"
 
 // Send variables
-#define SEND_PERIOD (5 * 1000)
+#define SEND_PERIOD (2 * 1000)
 uint32_t send_time = 0;
 
 // The DHT config
