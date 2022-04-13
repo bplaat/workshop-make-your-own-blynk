@@ -3,7 +3,6 @@ package com.example.controller;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.net.URI;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -11,7 +10,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.UIManager;
-import org.java_websocket.client.WebSocketClient;
 
 public class App implements Runnable {
     private static App instance = new App();
@@ -45,6 +43,7 @@ public class App implements Runnable {
         JFrame frame = new JFrame("Realtime LED Controller");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 600);
+        frame.setMinimumSize(new Dimension(320, 240));
         frame.setLocationRelativeTo(null);
 
         // Create client instance

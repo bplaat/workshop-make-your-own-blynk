@@ -30,12 +30,15 @@ wss.on('connection', ws => {
             console.log(`[WS] New led state: ${ledState == 1}`);
 
             // Send the update message to all other clients
-            const broadcast = new ArrayBuffer(2);
-            const broadcastView = new DataView(broadcast);
-            broadcastView.setUint8(0, MESSAGE_TYPE_LED_UPDATE);
-            broadcastView.setUint8(1, ledState);
-            for (const client of clients.filter(client => client.ws != ws)) {
-                client.ws.send(broadcast);
+            const otherClients = clients.filter(client => client.ws != ws);
+            if (otherClients.length > 0) {
+                const broadcast = new ArrayBuffer(2);
+                const broadcastView = new DataView(broadcast);
+                broadcastView.setUint8(0, MESSAGE_TYPE_LED_UPDATE);
+                broadcastView.setUint8(1, ledState);
+                for (const client of otherClients) {
+                    client.ws.send(broadcast);
+                }
             }
         }
     });
