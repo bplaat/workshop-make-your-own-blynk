@@ -19,6 +19,7 @@ This are the instructions that you need to follow to build and run the two examp
 - Install [Visual Studio Code](https://code.visualstudio.com/) if you don't have it
 - Go to the right folder `cd microcontroller`
 - Install the [Platform IO](https://platformio.org/) extension and active it in the folder
+- When you are building the Weather Station you need to connect a DHT11 sensor to pin D1 see the [Breadboard Scheme](weather-station/microcontroller/docs/breadboard-scheme.png)
 - Copy the `config.cpp.example` to `config.cpp` and fill in your WiFi info and your computer local IP-adress and server port
 - When Platform IO is loaded and everything is downloaded you can build and upload the program with the buttons in the bottom statusbar
 
