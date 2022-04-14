@@ -28,8 +28,7 @@ void wifi_connect(void) {
     Serial.print(wifi_ssid);
 
     WiFi.begin(wifi_ssid, wifi_password);
-    uint32_t connecting_time = millis();
-    while (!(WiFi.status() == WL_CONNECTED || millis() - connecting_time >= 10 * 1000)) {
+    while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
         delay(500);
     }

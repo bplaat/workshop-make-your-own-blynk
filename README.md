@@ -17,11 +17,19 @@ This are the instructions that you need to follow to build and run the two examp
 
 ### ESP8266 micocontroller
 - Install [Visual Studio Code](https://code.visualstudio.com/) if you don't have it
-- Go to the right folder `cd microcontroller`
+- Open the right folder in Visual Studio Code `esp8266/`
 - Install the [Platform IO extension](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide) and active it in the folder
-- When you are building the Weather Station you need to connect a DHT11 sensor to pin D1 see the [Breadboard Scheme](weather-station/microcontroller/docs/breadboard-scheme.png)
+- When you are building the Weather Station you need to connect a DHT11 sensor to pin D1 see the [Breadboard Scheme](weather-station/esp8266/docs/breadboard-scheme.png)
 - Copy the `config.cpp.example` to `config.cpp` and fill in your WiFi info and your computer local IP-adress and server port
 - When Platform IO is loaded and everything is downloaded you can build and upload the program with the buttons in the bottom statusbar
+
+## CC3220SF microcontroller
+- Install Energia
+- Install CC3220SF board
+- For the realtime LED example install ArduinoWebsockets library
+- Open the right `.ino` file
+- Copy the `config.cpp.example` to `config.cpp` and fill in your WiFi info and your computer local IP-adress and server port
+- Compile and upload to your device
 
 ### Website client
 - Just double click the `website/index.html` HTML file to open it in your browser
