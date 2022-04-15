@@ -24,9 +24,9 @@ This are the instructions that you need to follow to build and run the two examp
 - When Platform IO is loaded and everything is downloaded you can build and upload the program with the buttons in the bottom statusbar
 
 ## CC3220SF microcontroller
-- Install Energia
-- Install CC3220SF board
-- For the realtime LED example install ArduinoWebsockets library
+- Install the [Energia IDE](https://energia.nu/download/)
+- Install [CC3220SF board](https://energia.nu/pinmaps/cc3220sf-launchxl/) with the internal Boards Manager
+- When you are building the Weather Station you need to connect a TC74 I2C sensor and a LDR to pin 60 see the [Breadboard Scheme](weather-station/cc3220sf/docs/breadboard-scheme.png) TODO
 - Open the right `.ino` file
 - Copy the `config.cpp.example` to `config.cpp` and fill in your WiFi info and your computer local IP-adress and server port
 - Compile and upload to your device

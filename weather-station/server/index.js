@@ -2,9 +2,18 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 
 // Constants
-const MESSAGE_TYPE_MEASUREMENTS = 1;
-const MESSAGE_TYPE_NEW_MEASUREMENT = 2;
 const SERVER_PORT = process.env.PORT || 8080;
+
+const MessageType = {
+    INIT_MEASUREMENTS: 1,
+    NEW_MEASUREMENTS: 2
+};
+
+const MeasurementType = {
+    TEMPERATURE: 1,
+    HUMIDITY: 2,
+    LIGHTNESS: 3
+};
 
 // Array to store our received measurements
 const measurements = [];
@@ -22,15 +31,15 @@ wss.on('connection', ws => {
     });
 
     // Send all measurements to the client
-    const message = new ArrayBuffer(1 + 4 + measurements.length * (4 + 4 + 4 + 4));
+    const message = new ArrayBuffer(1 + 4 + measurements.length * (4 + 1 + 4 + 4));
     const messageView = new DataView(message);
     let pos = 0;
-    messageView.setUint8(pos, MESSAGE_TYPE_MEASUREMENTS); pos += 1;
+    messageView.setUint8(pos, MessageType.INIT_MEASUREMENTS); pos += 1;
     messageView.setUint32(pos, measurements.length, true); pos += 4;
     for (const measurement of measurements) {
         messageView.setUint32(pos, measurement.id, true); pos += 4;
-        messageView.setFloat32(pos, measurement.temperature, true); pos += 4;
-        messageView.setFloat32(pos, measurement.humidity, true); pos += 4;
+        messageView.setUint8(pos, measurement.type); pos += 1;
+        messageView.setFloat32(pos, measurement.value, true); pos += 4;
         messageView.setUint32(pos, measurement.created_at, true); pos += 4;
     }
     ws.send(message);
@@ -58,25 +67,57 @@ const server = http.createServer((req, res) => {
 
     // Create measurements endpoint
     if (pathname == '/api/measurements/create') {
-        // Create measurement add it to the measurements
-        const measurement = {
-            id: measurements.length + 1,
-            temperature: parseFloat(searchParams.get('temperature')),
-            humidity: parseFloat(searchParams.get('humidity')),
-            created_at: Math.floor(Date.now() / 1000)
-        };
-        measurements.push(measurement);
+        const newMeasurements = [];
+
+        // Create temperature measurement when given
+        if (searchParams.has('temperature')) {
+            const measurement = {
+                id: measurements.length + 1,
+                type: MeasurementType.TEMPERATURE,
+                value: parseFloat(searchParams.get('temperature')),
+                created_at: Math.floor(Date.now() / 1000)
+            };
+            measurements.push(measurement);
+            newMeasurements.push(measurement);
+        }
+
+        // Create humidity measurement when given
+        if (searchParams.has('humidity')) {
+            const measurement = {
+                id: measurements.length + 1,
+                type: MeasurementType.HUMIDITY,
+                value: parseFloat(searchParams.get('humidity')),
+                created_at: Math.floor(Date.now() / 1000)
+            };
+            measurements.push(measurement);
+            newMeasurements.push(measurement);
+        }
+
+        // Create lightness measurement when given
+        if (searchParams.has('lightness')) {
+            const measurement = {
+                id: measurements.length + 1,
+                type: MeasurementType.LIGHTNESS,
+                value: parseFloat(searchParams.get('lightness')),
+                created_at: Math.floor(Date.now() / 1000)
+            };
+            measurements.push(measurement);
+            newMeasurements.push(measurement);
+        }
 
         // Send connected websocket clients a message
         if (clients.length > 0) {
-            const message = new ArrayBuffer(1 + 4 + 4 + 4 + 4);
+            const message = new ArrayBuffer(1 + 4 + newMeasurements.length * (4 + 1 + 4 + 4));
             const messageView = new DataView(message);
             let pos = 0;
-            messageView.setUint8(pos, MESSAGE_TYPE_NEW_MEASUREMENT); pos += 1;
-            messageView.setUint32(pos, measurement.id, true); pos += 4;
-            messageView.setFloat32(pos, measurement.temperature, true); pos += 4;
-            messageView.setFloat32(pos, measurement.humidity, true); pos += 4;
-            messageView.setUint32(pos, measurement.created_at, true); pos += 4;
+            messageView.setUint8(pos, MessageType.NEW_MEASUREMENTS); pos += 1;
+            messageView.setUint32(pos, newMeasurements.length, true); pos += 4;
+            for (const measurement of newMeasurements) {
+                messageView.setUint32(pos, measurement.id, true); pos += 4;
+                messageView.setUint8(pos, measurement.type); pos += 1;
+                messageView.setFloat32(pos, measurement.value, true); pos += 4;
+                messageView.setUint32(pos, measurement.created_at, true); pos += 4;
+            }
             for (const client of clients) {
                 client.ws.send(message);
             }

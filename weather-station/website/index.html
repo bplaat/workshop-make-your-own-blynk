@@ -9,81 +9,158 @@
         *{box-sizing:border-box}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;font-size:16px;line-height:1.5}
         body{max-width:60rem;margin:0 auto;padding:1rem;color:#111;background-color:#fff}
+        .box:not(.is-visible){display:none}
     </style>
     <script src="chart.min.js"></script>
 </head>
 <body>
     <h1>Weather Station</h1>
 
-    <h2>Temperature (&deg;C)</h2>
-    <canvas id="temperature-chart"></canvas>
+    <div id="loading-box" class="box is-visible">
+        <p>Loading...</p>
+    </div>
 
-    <h2>Humidity (%)</h2>
-    <canvas id="humidity-chart"></canvas>
+    <div id="empty-box" class="box">
+        <p>There are no measurements yet!</p>
+    </div>
+
+    <div id="temperature-box" class="box">
+        <h2>Temperature (&deg;C)</h2>
+        <canvas id="temperature-chart"></canvas>
+    </div>
+
+    <div id="humidity-box" class="box">
+        <h2>Humidity (%)</h2>
+        <canvas id="humidity-chart"></canvas>
+    </div>
+
+    <div id="lightness-box" class="box">
+        <h2>Lightness (%)</h2>
+        <canvas id="lightness-chart"></canvas>
+    </div>
 
     <script>
         // Constants
-        const MESSAGE_TYPE_MEASUREMENTS = 1;
-        const MESSAGE_TYPE_NEW_MEASUREMENT = 2;
+        const MessageType = {
+            INIT_MEASUREMENTS: 1,
+            NEW_MEASUREMENTS: 2
+        };
 
-        // Measurements array
-        let measurements = [];
+        const MeasurementType = {
+            TEMPERATURE: 1,
+            HUMIDITY: 2,
+            LIGHTNESS: 3
+        };
 
-        // Temperature chart
+        // Measurements array per type
+        let temperatureMeasurements = [];
+        let humidityMeasurements = [];
+        let lightnessMeasurements = [];
+
+        // Select all the elements
+        const loadingBox = document.getElementById('loading-box');
+        const emptyBox = document.getElementById('empty-box');
+
+        const temperatureBox = document.getElementById('temperature-box');
         const temperatureCanvas = document.getElementById('temperature-chart');
         const temperatureContext = temperatureCanvas.getContext('2d');
         let temperatureChart;
 
-        function updateTemperatureChart() {
+        const humidityBox = document.getElementById('humidity-box');
+        const humidityCanvas = document.getElementById('humidity-chart');
+        const humidityContext = humidityCanvas.getContext('2d');
+        let humidityChart;
+
+        const lightnessBox = document.getElementById('lightness-box');
+        const lightnessCanvas = document.getElementById('lightness-chart');
+        const lightnessContext = lightnessCanvas.getContext('2d');
+        let lightnessChart;
+
+        function updateCharts() {
+            // Hide loading box
+            loadingBox.classList.remove('is-visible');
+
+            // Show empty box when there are no measurements
+            if (temperatureMeasurements.length == 0 && humidityMeasurements.length == 0 && lightnessMeasurements.length == 0) {
+                emptyBox.classList.add('is-visible');
+            } else {
+                emptyBox.classList.remove('is-visible');
+            }
+
+            // Show temperature box when there are temperature measurements
+            if (temperatureMeasurements.length > 0) {
+                temperatureBox.classList.add('is-visible');
+            }
             // Create temperature chart when not existing
             if (temperatureChart == undefined) {
                 temperatureChart = new Chart(temperatureContext, {
                     type: 'line',
                     data: {
-                        labels: measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        labels: temperatureMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
                         datasets: [{
                             label: 'Temperature (\u00b0C)',
-                            data: measurements.map(measurement => measurement.temperature),
-                            borderColor: '#74bdcb'
+                            data: temperatureMeasurements.map(measurement => measurement.value),
+                            borderColor: '#f4b9b8'
                         }]
                     }
                 });
             }
-
             // Update chart when it exists
             else {
-                temperatureChart.data.labels = measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                temperatureChart.data.datasets[0].data = measurements.map(measurement => measurement.temperature);
+                temperatureChart.data.labels = temperatureMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                temperatureChart.data.datasets[0].data = temperatureMeasurements.map(measurement => measurement.value);
                 temperatureChart.update();
             }
-        }
 
-        // Humidity chart
-        const humidityCanvas = document.getElementById('humidity-chart');
-        const humidityContext = humidityCanvas.getContext('2d');
-        let humidityChart;
 
-        function updateHumidityChart() {
+            // Show humidity box when there are humidity measurements
+            if (humidityMeasurements.length > 0) {
+                humidityBox.classList.add('is-visible');
+            }
             // Create humidity chart when not existing
             if (humidityChart == undefined) {
                 humidityChart = new Chart(humidityContext, {
                     type: 'line',
                     data: {
-                        labels: measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        labels: humidityMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
                         datasets: [{
                             label: 'Humidity (%)',
-                            data: measurements.map(measurement => measurement.humidity),
-                            borderColor: '#ffa384'
+                            data: humidityMeasurements.map(measurement => measurement.value),
+                            borderColor: '#85d2d0'
                         }]
                     }
                 });
             }
-
             // Update chart when it exists
             else {
-                humidityChart.data.labels = measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                humidityChart.data.datasets[0].data = measurements.map(measurement => measurement.humidity);
+                humidityChart.data.labels = humidityMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                humidityChart.data.datasets[0].data = humidityMeasurements.map(measurement => measurement.value);
                 humidityChart.update();
+            }
+
+            // Show lightness box when there are lightness measurements
+            if (lightnessMeasurements.length > 0) {
+                lightnessBox.classList.add('is-visible');
+            }
+            // Create lightness chart when not existing
+            if (lightnessChart == undefined) {
+                lightnessChart = new Chart(lightnessContext, {
+                    type: 'line',
+                    data: {
+                        labels: lightnessMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        datasets: [{
+                            label: 'Lightness (%)',
+                            data: lightnessMeasurements.map(measurement => measurement.value),
+                            borderColor: '#887bb0'
+                        }]
+                    }
+                });
+            }
+            // Update chart when it exists
+            else {
+                lightnessChart.data.labels = lightnessMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                lightnessChart.data.datasets[0].data = lightnessMeasurements.map(measurement => measurement.value);
+                lightnessChart.update();
             }
         }
 
@@ -98,32 +175,31 @@
             let pos = 0;
             const type = messageView.getUint8(pos); pos += 1;
 
-            // At the start we get all the old measurements, parse them and update charts
-            if (type == MESSAGE_TYPE_MEASUREMENTS) {
-                measurements = [];
+            // When we get measurements parse it, add it to measurements and update charts
+            if (type == MessageType.INIT_MEASUREMENTS || type == MessageType.NEW_MEASUREMENTS) {
+                if (type == MessageType.INIT_MEASUREMENTS) {
+                    temperatureMeasurements = [];
+                    humidityMeasurements = [];
+                    lightnessMeasurements = [];
+                }
                 const measurementsLength = messageView.getUint32(pos, true); pos += 4;
                 for (let i = 0; i < measurementsLength; i++) {
                     const measurement = {};
                     measurement.id = messageView.getUint32(pos, true); pos += 4;
-                    measurement.temperature = messageView.getFloat32(pos, true); pos += 4;
-                    measurement.humidity = messageView.getFloat32(pos, true); pos += 4;
+                    measurement.type = messageView.getUint8(pos); pos += 1;
+                    measurement.value = messageView.getFloat32(pos, true); pos += 4;
                     measurement.created_at = messageView.getUint32(pos, true); pos += 4;
-                    measurements.push(measurement);
+                    if (measurement.type == MeasurementType.TEMPERATURE) {
+                        temperatureMeasurements.push(measurement);
+                    }
+                    if (measurement.type == MeasurementType.HUMIDITY) {
+                        humidityMeasurements.push(measurement);
+                    }
+                    if (measurement.type == MeasurementType.LIGHTNESS) {
+                        lightnessMeasurements.push(measurement);
+                    }
                 }
-                updateTemperatureChart();
-                updateHumidityChart();
-            }
-
-            // When we get a new measurement parse it, add it to measurements and update charts
-            if (type == MESSAGE_TYPE_NEW_MEASUREMENT) {
-                const measurement = {};
-                measurement.id = messageView.getUint32(pos, true); pos += 4;
-                measurement.temperature = messageView.getFloat32(pos, true); pos += 4;
-                measurement.humidity = messageView.getFloat32(pos, true); pos += 4;
-                measurement.created_at = messageView.getUint32(pos, true); pos += 4;
-                measurements.push(measurement);
-                updateTemperatureChart();
-                updateHumidityChart();
+                updateCharts();
             }
         });
 
