@@ -1,0 +1,7 @@
+#include "config.h"
+
+const char *wifi_ssid = ""; // Enter here your WiFi SSID
+const char *wifi_password = ""; // Enter here your WiFi password
+
+IPAddress websocket_ip(192,168,0,100); // Enter here your local computer IP-address
+uint16_t websocket_port = 8080; // Enter here your websocket server port

@@ -2,6 +2,9 @@
 #include <Wire.h>
 #include "config.h"
 
+// I2C Temperature address
+#define TEMPERATURE_ADDRESS 0x4a
+
 // LDR pin
 #define LDR_PRECISION 12
 #define LDR_PIN 24
@@ -67,7 +70,7 @@ void loop() {
         send_time = millis();
 
         // Read i2c temperature sensor
-        Wire.requestFrom(0x4a, 1);
+        Wire.requestFrom(TEMPERATURE_ADDRESS, 1);
         uint8_t temperature = Wire.read();
         Serial.print("[IN] Temperature: ");
         Serial.print(temperature);
@@ -87,18 +90,20 @@ void loop() {
             client.print(temperature);
             client.print("&lightness=");
             client.print(lightness);
-            client.print(" HTTP/1.1\r\n");
+            client.println(" HTTP/1.1");
 
             // Host HTTP header: mandatory HTTP header for HTTP 1.1 request
             client.print("Host: ");
             client.print(api_ip);
             client.print(":");
-            client.print(api_port);
-            client.print("\r\n");
+            client.println(api_port);
 
             // Connection HTTP header: close TCP connection when HTTP request is complete
             // And an empty line so HTTP request is done
-            client.print("Connection: close\r\n\r\n");
+            client.println("Connection: close");
+            client.println();
+        } else {
+            Serial.println("[HTTP] Can't send a HTTP request to the server!");
         }
     }
 }
