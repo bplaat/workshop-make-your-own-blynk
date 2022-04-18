@@ -26,7 +26,7 @@ This are the instructions that you need to follow to build and run the two examp
 ## CC3220SF microcontroller
 - Install the [Energia IDE](https://energia.nu/download/)
 - Install [CC3220SF board](https://energia.nu/pinmaps/cc3220sf-launchxl/) with the internal Boards Manager
-- When you are building the Weather Station you need to connect a TC74 I2C sensor and a LDR to pin 60 see the [Breadboard Scheme](weather-station/cc3220sf/docs/breadboard-scheme.png) TODO
+- When you are building the Weather Station you need to connect a TC74 I2C sensor and a LDR and resistor to pin 60
 - Open the right `.ino` file
 - Copy the `config.cpp.example` to `config.cpp` and fill in your WiFi info and your computer local IP-adress and server port
 - Compile and upload to your device
