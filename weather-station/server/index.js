@@ -61,13 +61,21 @@ const server = http.createServer((req, res) => {
     // List measurements endpoint
     if (pathname == '/api/measurements') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ data: measurements }));
+        res.end(JSON.stringify({
+            data: measurements.map(measurement => {
+                if (measurement.type == MeasurementType.TEMPERATURE) measurement.type = 'temperature';
+                if (measurement.type == MeasurementType.HUMIDITY) measurement.type = 'humidity';
+                if (measurement.type == MeasurementType.LIGHTNESS) measurement.type = 'lightness';
+                return measurement;
+            })
+        }));
         return;
     }
 
     // Create measurements endpoint
     if (pathname == '/api/measurements/create') {
         const newMeasurements = [];
+        const currentTime = Math.floor(Date.now() / 1000);
 
         // Create temperature measurement when given
         if (searchParams.has('temperature')) {
@@ -75,7 +83,7 @@ const server = http.createServer((req, res) => {
                 id: measurements.length + 1,
                 type: MeasurementType.TEMPERATURE,
                 value: parseFloat(searchParams.get('temperature')),
-                created_at: Math.floor(Date.now() / 1000)
+                created_at: currentTime
             };
             measurements.push(measurement);
             newMeasurements.push(measurement);
@@ -87,7 +95,7 @@ const server = http.createServer((req, res) => {
                 id: measurements.length + 1,
                 type: MeasurementType.HUMIDITY,
                 value: parseFloat(searchParams.get('humidity')),
-                created_at: Math.floor(Date.now() / 1000)
+                created_at: currentTime
             };
             measurements.push(measurement);
             newMeasurements.push(measurement);
@@ -99,7 +107,7 @@ const server = http.createServer((req, res) => {
                 id: measurements.length + 1,
                 type: MeasurementType.LIGHTNESS,
                 value: parseFloat(searchParams.get('lightness')),
-                created_at: Math.floor(Date.now() / 1000)
+                created_at: currentTime
             };
             measurements.push(measurement);
             newMeasurements.push(measurement);
