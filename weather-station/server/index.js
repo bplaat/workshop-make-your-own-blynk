@@ -112,10 +112,11 @@ const server = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
             data: measurements.map(measurement => {
-                if (measurement.type == MeasurementType.TEMPERATURE) measurement.type = 'temperature';
-                if (measurement.type == MeasurementType.HUMIDITY) measurement.type = 'humidity';
-                if (measurement.type == MeasurementType.LIGHTNESS) measurement.type = 'lightness';
-                return measurement;
+                const measurementClone = { ...measurement };
+                if (measurement.type == MeasurementType.TEMPERATURE) measurementClone.type = 'temperature';
+                if (measurement.type == MeasurementType.HUMIDITY) measurementClone.type = 'humidity';
+                if (measurement.type == MeasurementType.LIGHTNESS) measurementClone.type = 'lightness';
+                return measurementClone;
             })
         }));
         return;

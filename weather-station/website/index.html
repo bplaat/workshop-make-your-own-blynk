@@ -18,15 +18,17 @@ body{max-width:60rem;margin:0 auto;padding:1rem;color:#111;background-color:#fff
     <div id="app">
         <h1>Weather Station</h1>
 
-        <div v-if="devices.length > 0" v-for="device in devices" :key="device.id" class="box">
-            <h2>{{ device.name }}</h2>
+        <template v-if="devices.length > 0">
+            <div v-for="device in devices" :key="device.id" class="box">
+                <h2>{{ device.name }}</h2>
 
-            <temperature-chart v-if="device.temperatureMeasurements.length > 0" :measurements="device.temperatureMeasurements"></temperature-chart>
+                <temperature-chart v-if="device.temperatureMeasurements.length > 0" :measurements="device.temperatureMeasurements"></temperature-chart>
 
-            <humidity-chart v-if="device.humidityMeasurements.length > 0" :measurements="device.humidityMeasurements"></humidity-chart>
+                <humidity-chart v-if="device.humidityMeasurements.length > 0" :measurements="device.humidityMeasurements"></humidity-chart>
 
-            <lightness-chart v-if="device.lightnessMeasurements.length > 0" :measurements="device.lightnessMeasurements"></lightness-chart>
-        </div>
+                <lightness-chart v-if="device.lightnessMeasurements.length > 0" :measurements="device.lightnessMeasurements"></lightness-chart>
+            </div>
+        </template>
         <p v-else>No devices have send measurements yet!</p>
     </div>
 
