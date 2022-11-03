@@ -1,5 +1,6 @@
 package com.example.controller;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -27,6 +28,7 @@ public class App implements Runnable {
     // Update led state and button text
     private void updateLedState(boolean newLedState) {
         ledState = newLedState;
+        toggleButton.setBackground(ledState ? Color.green : Color.red);
         toggleButton.setText(ledState ? "ON" : "OFF");
     }
 
@@ -67,6 +69,8 @@ public class App implements Runnable {
         root.add(Box.createVerticalStrut(16));
 
         toggleButton = new JButton("Connecting...");
+        toggleButton.setOpaque(true);
+        toggleButton.setBorderPainted(false);
         toggleButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         toggleButton.setFont(headerLabel.getFont().deriveFont(16.f));
         toggleButton.setPreferredSize(new Dimension(0, 64));

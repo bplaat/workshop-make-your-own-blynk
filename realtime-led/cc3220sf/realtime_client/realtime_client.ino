@@ -108,7 +108,7 @@ void loop() {
                     if (i < 2) buffer[2 + i] = byte;
                 }
 
-                // We it is a data frame we send it to the handle message function
+                // We it is a binary data frame we send it to the handle message function
                 if ((buffer[0] & 0xf) == 2) {
                     websocket_handle_message(&buffer[2]);
                 }
