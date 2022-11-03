@@ -5,3 +5,5 @@ const char *wifi_password = ""; // Enter here your WiFi password
 
 IPAddress api_ip(192,168,0,100); // Enter here your local computer IP-address
 uint16_t api_port = 8080; // Enter here your server port
+
+const char *device_name = "WeatherStation"; // Enter here your unique device name (don't use spaces)

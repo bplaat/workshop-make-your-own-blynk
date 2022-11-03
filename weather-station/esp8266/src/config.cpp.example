@@ -2,4 +2,6 @@
 
 const char *wifi_ssid = ""; // Enter here your WiFi SSID
 const char *wifi_password = ""; // Enter here your WiFi password
+
 const char *api_url = "http://192.168.0.100:8080"; // Enter here your local computer IP-address with used server port
+const char *device_name = "WeatherStation"; // Enter here your unique device name (don't use spaces)

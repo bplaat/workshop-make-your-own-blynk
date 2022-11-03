@@ -5,7 +5,10 @@
 
 extern const char *wifi_ssid;
 extern const char *wifi_password;
+
 extern IPAddress api_ip;
 extern uint16_t api_port;
+
+extern const char *device_name;
 
 #endif

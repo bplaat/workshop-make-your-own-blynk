@@ -86,7 +86,9 @@ void loop() {
         client.stop();
         if (client.connect(api_ip, api_port)) {
             // Start of any HTTP GET request
-            client.print("GET /api/measurements/create?temperature=");
+            client.print("GET /api/measurements/create?name=");
+            client.print(device_name);
+            client.print("&temperature=");
             client.print(temperature);
             client.print("&lightness=");
             client.print(lightness);

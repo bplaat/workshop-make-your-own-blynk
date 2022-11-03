@@ -4,170 +4,233 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Station</title>
-    <link rel="shortcut icon" href="data:">
+    <link rel="shortcut icon" href="data:,">
     <style>
-        *{box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;font-size:16px;line-height:1.5}
-        body{max-width:60rem;margin:0 auto;padding:1rem;color:#111;background-color:#fff}
-        .box:not(.is-visible){display:none}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;font-size:16px;line-height:1.5}
+body{max-width:60rem;margin:0 auto;padding:1rem;color:#111;background-color:#fff}
+.box{border:1px solid #ccc;border-radius:1rem;padding:1rem 2rem;margin:2rem 0}
     </style>
+    <script src="vue.min.js"></script>
     <script src="chart.min.js"></script>
 </head>
 <body>
-    <h1>Weather Station</h1>
+    <div id="app">
+        <h1>Weather Station</h1>
 
-    <div id="loading-box" class="box is-visible">
-        <p>Loading...</p>
-    </div>
+        <div v-if="devices.length > 0" v-for="device in devices" :key="device.id" class="box">
+            <h2>{{ device.name }}</h2>
 
-    <div id="empty-box" class="box">
-        <p>There are no measurements yet!</p>
-    </div>
+            <temperature-chart v-if="device.temperatureMeasurements.length > 0" :measurements="device.temperatureMeasurements"></temperature-chart>
 
-    <div id="temperature-box" class="box">
-        <h2>Temperature (&deg;C)</h2>
-        <canvas id="temperature-chart"></canvas>
-    </div>
+            <humidity-chart v-if="device.humidityMeasurements.length > 0" :measurements="device.humidityMeasurements"></humidity-chart>
 
-    <div id="humidity-box" class="box">
-        <h2>Humidity (%)</h2>
-        <canvas id="humidity-chart"></canvas>
-    </div>
-
-    <div id="lightness-box" class="box">
-        <h2>Lightness (%)</h2>
-        <canvas id="lightness-chart"></canvas>
+            <lightness-chart v-if="device.lightnessMeasurements.length > 0" :measurements="device.lightnessMeasurements"></lightness-chart>
+        </div>
+        <p v-else>No devices have send measurements yet!</p>
     </div>
 
     <script>
-        // Constants
-        const MessageType = {
-            INIT_MEASUREMENTS: 1,
-            NEW_MEASUREMENTS: 2
+// Constants
+const MessageType = {
+    INIT_DEVICES: 1,
+    INIT_MEASUREMENTS: 2,
+    NEW_DEVICE: 3,
+    NEW_MEASUREMENTS: 4
+};
+
+const MeasurementType = {
+    TEMPERATURE: 1,
+    HUMIDITY: 2,
+    LIGHTNESS: 3
+};
+
+// Utils
+function bytes2uuid(bytes) {
+    let pos = 0;
+    let uuid = '';
+    for (let i = 0; i < 4; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
+    uuid += '-';
+    for (let i = 0; i < 2; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
+    uuid += '-';
+    for (let i = 0; i < 2; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
+    uuid += '-';
+    for (let i = 0; i < 2; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
+    uuid += '-';
+    for (let i = 0; i < 6; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
+    return uuid;
+}
+
+// Components
+Vue.component('temperature-chart', {
+    props: ['measurements'],
+
+    template: `<div class="box">
+        <h2>Temperature (&deg;C)</h2>
+        <canvas ref="chart"></canvas>
+    </div>`,
+
+    data() {
+        return {
+            chart: undefined,
+            measurements: []
         };
+    },
 
-        const MeasurementType = {
-            TEMPERATURE: 1,
-            HUMIDITY: 2,
-            LIGHTNESS: 3
-        };
+    watch: {
+        measurements() {
+            this.updateChart();
+        }
+    },
 
-        // Measurements array per type
-        let temperatureMeasurements = [];
-        let humidityMeasurements = [];
-        let lightnessMeasurements = [];
+    mounted() {
+        this.updateChart();
+    },
 
-        // Select all the elements
-        const loadingBox = document.getElementById('loading-box');
-        const emptyBox = document.getElementById('empty-box');
-
-        const temperatureBox = document.getElementById('temperature-box');
-        const temperatureCanvas = document.getElementById('temperature-chart');
-        const temperatureContext = temperatureCanvas.getContext('2d');
-        let temperatureChart;
-
-        const humidityBox = document.getElementById('humidity-box');
-        const humidityCanvas = document.getElementById('humidity-chart');
-        const humidityContext = humidityCanvas.getContext('2d');
-        let humidityChart;
-
-        const lightnessBox = document.getElementById('lightness-box');
-        const lightnessCanvas = document.getElementById('lightness-chart');
-        const lightnessContext = lightnessCanvas.getContext('2d');
-        let lightnessChart;
-
-        function updateCharts() {
-            // Hide loading box
-            loadingBox.classList.remove('is-visible');
-
-            // Show empty box when there are no measurements
-            if (temperatureMeasurements.length == 0 && humidityMeasurements.length == 0 && lightnessMeasurements.length == 0) {
-                emptyBox.classList.add('is-visible');
-            } else {
-                emptyBox.classList.remove('is-visible');
-            }
-
-            // Show temperature box when there are temperature measurements
-            if (temperatureMeasurements.length > 0) {
-                temperatureBox.classList.add('is-visible');
-            }
-            // Create temperature chart when not existing
-            if (temperatureChart == undefined) {
-                temperatureChart = new Chart(temperatureContext, {
+    methods: {
+        updateChart() {
+            if (this.chart == undefined) {
+                this.chart = new Chart(this.$refs.chart.getContext('2d'), {
                     type: 'line',
                     data: {
-                        labels: temperatureMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        labels: this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
                         datasets: [{
                             label: 'Temperature (\u00b0C)',
-                            data: temperatureMeasurements.map(measurement => measurement.value),
+                            data: this.measurements.map(measurement => measurement.value),
                             borderColor: '#f4b9b8'
                         }]
                     }
                 });
             }
-            // Update chart when it exists
             else {
-                temperatureChart.data.labels = temperatureMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                temperatureChart.data.datasets[0].data = temperatureMeasurements.map(measurement => measurement.value);
-                temperatureChart.update();
+                this.chart.data.labels = this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                this.chart.data.datasets[0].data = this.measurements.map(measurement => measurement.value);
+                this.chart.update();
             }
+        }
+    }
+});
 
+Vue.component('humidity-chart', {
+    props: ['measurements'],
 
-            // Show humidity box when there are humidity measurements
-            if (humidityMeasurements.length > 0) {
-                humidityBox.classList.add('is-visible');
-            }
-            // Create humidity chart when not existing
-            if (humidityChart == undefined) {
-                humidityChart = new Chart(humidityContext, {
+    template: `<div class="box">
+        <h2>Humidity (%)</h2>
+        <canvas ref="chart"></canvas>
+    </div>`,
+
+    data() {
+        return {
+            chart: undefined,
+            measurements: []
+        };
+    },
+
+    watch: {
+        measurements() {
+            this.updateChart();
+        }
+    },
+
+    mounted() {
+        this.updateChart();
+    },
+
+    methods: {
+        updateChart() {
+            if (this.chart == undefined) {
+                this.chart = new Chart(this.$refs.chart.getContext('2d'), {
                     type: 'line',
                     data: {
-                        labels: humidityMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        labels: this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
                         datasets: [{
                             label: 'Humidity (%)',
-                            data: humidityMeasurements.map(measurement => measurement.value),
+                            data: this.measurements.map(measurement => measurement.value),
                             borderColor: '#85d2d0'
                         }]
                     }
                 });
             }
-            // Update chart when it exists
             else {
-                humidityChart.data.labels = humidityMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                humidityChart.data.datasets[0].data = humidityMeasurements.map(measurement => measurement.value);
-                humidityChart.update();
+                this.chart.data.labels = this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                this.chart.data.datasets[0].data = this.measurements.map(measurement => measurement.value);
+                this.chart.update();
             }
+        }
+    }
+});
 
-            // Show lightness box when there are lightness measurements
-            if (lightnessMeasurements.length > 0) {
-                lightnessBox.classList.add('is-visible');
-            }
-            // Create lightness chart when not existing
-            if (lightnessChart == undefined) {
-                lightnessChart = new Chart(lightnessContext, {
+Vue.component('lightness-chart', {
+    props: ['measurements'],
+
+    template: `<div class="box">
+        <h2>Lightness (%)</h2>
+        <canvas ref="chart"></canvas>
+    </div>`,
+
+    data() {
+        return {
+            chart: undefined,
+            measurements: []
+        };
+    },
+
+    watch: {
+        measurements() {
+            this.updateChart();
+        }
+    },
+
+    mounted() {
+        this.updateChart();
+    },
+
+    methods: {
+        updateChart() {
+            if (this.chart == undefined) {
+                this.chart = new Chart(this.$refs.chart.getContext('2d'), {
                     type: 'line',
                     data: {
-                        labels: lightnessMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
+                        labels: this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
                         datasets: [{
                             label: 'Lightness (%)',
-                            data: lightnessMeasurements.map(measurement => measurement.value),
+                            data: this.measurements.map(measurement => measurement.value),
                             borderColor: '#887bb0'
                         }]
                     }
                 });
             }
-            // Update chart when it exists
             else {
-                lightnessChart.data.labels = lightnessMeasurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                lightnessChart.data.datasets[0].data = lightnessMeasurements.map(measurement => measurement.value);
-                lightnessChart.update();
+                this.chart.data.labels = this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
+                this.chart.data.datasets[0].data = this.measurements.map(measurement => measurement.value);
+                this.chart.update();
             }
         }
+    }
+});
 
-        // Websocket connection and listen to messages
-        const ws = new WebSocket('ws://localhost:8080/ws');
-        ws.binaryType = 'arraybuffer';
-        ws.addEventListener('message', event => {
+// App
+const app = new Vue({
+    el: '#app',
+
+    data() {
+        return {
+            devices: []
+        }
+    },
+
+    created() {
+        this.connect();
+    },
+
+    methods: {
+        connect() {
+            const ws = new WebSocket('ws://localhost:8080/ws');
+            ws.binaryType = 'arraybuffer';
+            ws.onmessage = this.onMessage.bind(this);
+        },
+
+        onMessage(event) {
             // We use a dataview to read the binary data
             const messageView = new DataView(event.data);
 
@@ -175,34 +238,63 @@
             let pos = 0;
             const type = messageView.getUint8(pos); pos += 1;
 
-            // When we get measurements parse it, add it to measurements and update charts
-            if (type == MessageType.INIT_MEASUREMENTS || type == MessageType.NEW_MEASUREMENTS) {
-                if (type == MessageType.INIT_MEASUREMENTS) {
-                    temperatureMeasurements = [];
-                    humidityMeasurements = [];
-                    lightnessMeasurements = [];
+            // Init devices message
+            if (type == MessageType.INIT_DEVICES) {
+                const devicesLength = messageView.getUint32(pos, true); pos += 4;
+                for (let i = 0; i < devicesLength; i++) {
+                    const device = {};
+                    device.id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
+
+                    const deviceNameLength = messageView.getUint16(pos, true); pos += 2;
+                    device.name = new TextDecoder().decode(new Uint8Array(event.data, pos, deviceNameLength));
+
+                    device.temperatureMeasurements = [];
+                    device.humidityMeasurements = [];
+                    device.lightnessMeasurements = [];
+                    this.devices.push(device);
                 }
+            }
+
+            // New device messages
+            if (type == MessageType.NEW_DEVICE) {
+                const device = {};
+                device.id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
+
+                const deviceNameLength = messageView.getUint16(pos, true); pos += 2;
+                device.name = new TextDecoder().decode(new Uint8Array(event.data, pos, deviceNameLength));
+
+                device.temperatureMeasurements = [];
+                device.humidityMeasurements = [];
+                device.lightnessMeasurements = [];
+                this.devices.push(device);
+            }
+
+            // Init or new measurements messages
+            if (type == MessageType.INIT_MEASUREMENTS || type == MessageType.NEW_MEASUREMENTS) {
                 const measurementsLength = messageView.getUint32(pos, true); pos += 4;
                 for (let i = 0; i < measurementsLength; i++) {
                     const measurement = {};
-                    measurement.id = messageView.getUint32(pos, true); pos += 4;
+                    measurement.id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
+                    measurement.device_id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
                     measurement.type = messageView.getUint8(pos); pos += 1;
                     measurement.value = messageView.getFloat32(pos, true); pos += 4;
                     measurement.created_at = messageView.getUint32(pos, true); pos += 4;
+
+                    const device = this.devices.find(device => device.id == measurement.device_id);
                     if (measurement.type == MeasurementType.TEMPERATURE) {
-                        temperatureMeasurements.push(measurement);
+                        device.temperatureMeasurements.push(measurement);
                     }
                     if (measurement.type == MeasurementType.HUMIDITY) {
-                        humidityMeasurements.push(measurement);
+                        device.humidityMeasurements.push(measurement);
                     }
                     if (measurement.type == MeasurementType.LIGHTNESS) {
-                        lightnessMeasurements.push(measurement);
+                        device.lightnessMeasurements.push(measurement);
                     }
                 }
-                updateCharts();
             }
-        });
-
-    </script>
+        }
+    }
+});
+</script>
 </body>
 </html>
