@@ -5,298 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Station</title>
     <link rel="shortcut icon" href="data:,">
-    <style>
-*{box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;font-size:16px;line-height:1.5}
-body{max-width:60rem;margin:0 auto;padding:1rem;color:#111;background-color:#fff}
-.box{border:1px solid #ccc;border-radius:1rem;padding:1rem 2rem;margin:2rem 0}
-    </style>
+    <link rel="stylesheet" href="style.css">
     <script src="vue.min.js"></script>
     <script src="chart.min.js"></script>
 </head>
 <body>
     <div id="app">
         <h1>Weather Station</h1>
+        <template v-if="connected">
+            <template v-if="devices.length > 0">
+                <div v-for="device in devices" :key="device.id" class="box">
+                    <h2>{{ device.name }}</h2>
 
-        <template v-if="devices.length > 0">
-            <div v-for="device in devices" :key="device.id" class="box">
-                <h2>{{ device.name }}</h2>
+                    <measurements-chart v-if="device.temperatureMeasurements.length > 0" label="Temperature (&deg;C)" color="#f4b9b8"
+                        :measurements="device.temperatureMeasurements"></measurements-chart>
 
-                <temperature-chart v-if="device.temperatureMeasurements.length > 0" :measurements="device.temperatureMeasurements"></temperature-chart>
+                    <measurements-chart v-if="device.humidityMeasurements.length > 0" label="Humidity (%)" color="#85d2d0"
+                        :measurements="device.humidityMeasurements"></measurements-chart>
 
-                <humidity-chart v-if="device.humidityMeasurements.length > 0" :measurements="device.humidityMeasurements"></humidity-chart>
-
-                <lightness-chart v-if="device.lightnessMeasurements.length > 0" :measurements="device.lightnessMeasurements"></lightness-chart>
-            </div>
+                    <measurements-chart v-if="device.lightnessMeasurements.length > 0" label="Lightness (%)" color="#887bb0"
+                        :measurements="device.lightnessMeasurements"></measurements-chart>
+                </div>
+            </template>
+            <p v-else>No devices have send measurements yet!</p>
         </template>
-        <p v-else>No devices have send measurements yet!</p>
+        <p v-else>Connecting to the Weather Station server...</p>
     </div>
-
-    <script>
-// Constants
-const MessageType = {
-    INIT_DEVICES: 1,
-    INIT_MEASUREMENTS: 2,
-    NEW_DEVICE: 3,
-    NEW_MEASUREMENTS: 4
-};
-
-const MeasurementType = {
-    TEMPERATURE: 1,
-    HUMIDITY: 2,
-    LIGHTNESS: 3
-};
-
-// Utils
-function bytes2uuid(bytes) {
-    let pos = 0;
-    let uuid = '';
-    for (let i = 0; i < 4; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
-    uuid += '-';
-    for (let i = 0; i < 2; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
-    uuid += '-';
-    for (let i = 0; i < 2; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
-    uuid += '-';
-    for (let i = 0; i < 2; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
-    uuid += '-';
-    for (let i = 0; i < 6; i++) uuid += bytes[pos++].toString(16).padStart(2, '0');
-    return uuid;
-}
-
-// Components
-Vue.component('temperature-chart', {
-    props: ['measurements'],
-
-    template: `<div class="box">
-        <h2>Temperature (&deg;C)</h2>
-        <canvas ref="chart"></canvas>
-    </div>`,
-
-    data() {
-        return {
-            chart: undefined,
-            measurements: []
-        };
-    },
-
-    watch: {
-        measurements() {
-            this.updateChart();
-        }
-    },
-
-    mounted() {
-        this.updateChart();
-    },
-
-    methods: {
-        updateChart() {
-            if (this.chart == undefined) {
-                this.chart = new Chart(this.$refs.chart.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
-                        datasets: [{
-                            label: 'Temperature (\u00b0C)',
-                            data: this.measurements.map(measurement => measurement.value),
-                            borderColor: '#f4b9b8'
-                        }]
-                    }
-                });
-            }
-            else {
-                this.chart.data.labels = this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                this.chart.data.datasets[0].data = this.measurements.map(measurement => measurement.value);
-                this.chart.update();
-            }
-        }
-    }
-});
-
-Vue.component('humidity-chart', {
-    props: ['measurements'],
-
-    template: `<div class="box">
-        <h2>Humidity (%)</h2>
-        <canvas ref="chart"></canvas>
-    </div>`,
-
-    data() {
-        return {
-            chart: undefined,
-            measurements: []
-        };
-    },
-
-    watch: {
-        measurements() {
-            this.updateChart();
-        }
-    },
-
-    mounted() {
-        this.updateChart();
-    },
-
-    methods: {
-        updateChart() {
-            if (this.chart == undefined) {
-                this.chart = new Chart(this.$refs.chart.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
-                        datasets: [{
-                            label: 'Humidity (%)',
-                            data: this.measurements.map(measurement => measurement.value),
-                            borderColor: '#85d2d0'
-                        }]
-                    }
-                });
-            }
-            else {
-                this.chart.data.labels = this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                this.chart.data.datasets[0].data = this.measurements.map(measurement => measurement.value);
-                this.chart.update();
-            }
-        }
-    }
-});
-
-Vue.component('lightness-chart', {
-    props: ['measurements'],
-
-    template: `<div class="box">
-        <h2>Lightness (%)</h2>
-        <canvas ref="chart"></canvas>
-    </div>`,
-
-    data() {
-        return {
-            chart: undefined,
-            measurements: []
-        };
-    },
-
-    watch: {
-        measurements() {
-            this.updateChart();
-        }
-    },
-
-    mounted() {
-        this.updateChart();
-    },
-
-    methods: {
-        updateChart() {
-            if (this.chart == undefined) {
-                this.chart = new Chart(this.$refs.chart.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString()),
-                        datasets: [{
-                            label: 'Lightness (%)',
-                            data: this.measurements.map(measurement => measurement.value),
-                            borderColor: '#887bb0'
-                        }]
-                    }
-                });
-            }
-            else {
-                this.chart.data.labels = this.measurements.map(measurement => new Date(measurement.created_at * 1000).toLocaleTimeString());
-                this.chart.data.datasets[0].data = this.measurements.map(measurement => measurement.value);
-                this.chart.update();
-            }
-        }
-    }
-});
-
-// App
-const app = new Vue({
-    el: '#app',
-
-    data() {
-        return {
-            devices: []
-        }
-    },
-
-    created() {
-        this.connect();
-    },
-
-    methods: {
-        connect() {
-            const ws = new WebSocket('ws://localhost:8080/ws');
-            ws.binaryType = 'arraybuffer';
-            ws.onmessage = this.onMessage.bind(this);
-        },
-
-        onMessage(event) {
-            // We use a dataview to read the binary data
-            const messageView = new DataView(event.data);
-
-            // The first byte of our message is the message type
-            let pos = 0;
-            const type = messageView.getUint8(pos); pos += 1;
-
-            // Init devices message
-            if (type == MessageType.INIT_DEVICES) {
-                const devicesLength = messageView.getUint32(pos, true); pos += 4;
-                for (let i = 0; i < devicesLength; i++) {
-                    const device = {};
-                    device.id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
-
-                    const deviceNameLength = messageView.getUint16(pos, true); pos += 2;
-                    device.name = new TextDecoder().decode(new Uint8Array(event.data, pos, deviceNameLength));
-
-                    device.temperatureMeasurements = [];
-                    device.humidityMeasurements = [];
-                    device.lightnessMeasurements = [];
-                    this.devices.push(device);
-                }
-            }
-
-            // New device messages
-            if (type == MessageType.NEW_DEVICE) {
-                const device = {};
-                device.id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
-
-                const deviceNameLength = messageView.getUint16(pos, true); pos += 2;
-                device.name = new TextDecoder().decode(new Uint8Array(event.data, pos, deviceNameLength));
-
-                device.temperatureMeasurements = [];
-                device.humidityMeasurements = [];
-                device.lightnessMeasurements = [];
-                this.devices.push(device);
-            }
-
-            // Init or new measurements messages
-            if (type == MessageType.INIT_MEASUREMENTS || type == MessageType.NEW_MEASUREMENTS) {
-                const measurementsLength = messageView.getUint32(pos, true); pos += 4;
-                for (let i = 0; i < measurementsLength; i++) {
-                    const measurement = {};
-                    measurement.id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
-                    measurement.device_id = bytes2uuid(new Uint8Array(event.data, pos, 16)); pos += 16;
-                    measurement.type = messageView.getUint8(pos); pos += 1;
-                    measurement.value = messageView.getFloat32(pos, true); pos += 4;
-                    measurement.created_at = messageView.getUint32(pos, true); pos += 4;
-
-                    const device = this.devices.find(device => device.id == measurement.device_id);
-                    if (measurement.type == MeasurementType.TEMPERATURE) {
-                        device.temperatureMeasurements.push(measurement);
-                    }
-                    if (measurement.type == MeasurementType.HUMIDITY) {
-                        device.humidityMeasurements.push(measurement);
-                    }
-                    if (measurement.type == MeasurementType.LIGHTNESS) {
-                        device.lightnessMeasurements.push(measurement);
-                    }
-                }
-            }
-        }
-    }
-});
-</script>
+    <script src="script.js"></script>
 </body>
 </html>

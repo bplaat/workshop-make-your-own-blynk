@@ -7,8 +7,8 @@ const SERVER_PORT = process.env.PORT || 8080;
 
 const MessageType = {
     INIT_DEVICES: 1,
-    INIT_MEASUREMENTS: 2,
-    NEW_DEVICE: 3,
+    NEW_DEVICE: 2,
+    INIT_MEASUREMENTS: 3,
     NEW_MEASUREMENTS: 4
 };
 
@@ -26,6 +26,31 @@ function uuid2bytes(uuid) {
         bytes[i] = parseInt(hexs.substring(i * 2, i * 2 + 2), 16);
     }
     return bytes;
+}
+
+function encodeDevice(buffer, pos, device) {
+    const view = new DataView(buffer);
+    const idBytes = uuid2bytes(device.id);
+    for (let i = 0; i < 16; i++) view.setUint8(pos++, idBytes[i]);
+
+    const nameBytes = new TextEncoder().encode(device.name);
+    view.setUint16(pos, nameBytes.length, true); pos += 2;
+    for (let i = 0; i < nameBytes.length; i++) view.setUint8(pos++, nameBytes[i]);
+    return pos;
+}
+
+function encodeMeasurement(buffer, pos, measurement) {
+    const view = new DataView(buffer);
+    const idBytes = uuid2bytes(measurement.id);
+    for (let i = 0; i < 16; i++) view.setUint8(pos++, idBytes[i]);
+
+    const deviceIdBytes = uuid2bytes(measurement.device_id);
+    for (let i = 0; i < 16; i++) view.setUint8(pos++, deviceIdBytes[i]);
+
+    view.setUint8(pos++, measurement.type);
+    view.setFloat32(pos, measurement.value, true); pos += 4;
+    view.setUint32(pos, measurement.created_at, true); pos += 4;
+    return pos;
 }
 
 // Data store
@@ -48,19 +73,13 @@ wss.on('connection', ws => {
     {
         let messageSize = 1 + 4;
         for (const device of devices) messageSize += 16 + 2 + new TextEncoder().encode(device.name).length;
-
         const message = new ArrayBuffer(messageSize);
         const messageView = new DataView(message);
         let pos = 0;
-        messageView.setUint8(pos, MessageType.INIT_DEVICES); pos += 1;
+        messageView.setUint8(pos++, MessageType.INIT_DEVICES);
         messageView.setUint32(pos, devices.length, true); pos += 4;
         for (const device of devices) {
-            const deviceIdBytes = uuid2bytes(device.id);
-            for (let i = 0; i < 16; i++) messageView.setUint8(pos++, deviceIdBytes[i]);
-
-            const deviceNameBytes = new TextEncoder().encode(device.name);
-            messageView.setUint16(pos, deviceNameBytes.length, true); pos += 2;
-            for (let i = 0; i < deviceNameBytes.length; i++) messageView.setUint8(pos++, deviceNameBytes[i]);
+            pos = encodeDevice(message, pos, device);
         }
         ws.send(message);
     }
@@ -70,18 +89,10 @@ wss.on('connection', ws => {
         const message = new ArrayBuffer(1 + 4 + measurements.length * (16 + 16 + 1 + 4 + 4));
         const messageView = new DataView(message);
         let pos = 0;
-        messageView.setUint8(pos, MessageType.INIT_MEASUREMENTS); pos += 1;
+        messageView.setUint8(pos++, MessageType.INIT_MEASUREMENTS);
         messageView.setUint32(pos, measurements.length, true); pos += 4;
         for (const measurement of measurements) {
-            const measurementIdBytes = uuid2bytes(measurement.id);
-            for (let i = 0; i < 16; i++) messageView.setUint8(pos++, measurementIdBytes[i]);
-
-            const deviceIdBytes = uuid2bytes(measurement.device_id);
-            for (let i = 0; i < 16; i++) messageView.setUint8(pos++, deviceIdBytes[i]);
-
-            messageView.setUint8(pos, measurement.type); pos += 1;
-            messageView.setFloat32(pos, measurement.value, true); pos += 4;
-            messageView.setUint32(pos, measurement.created_at, true); pos += 4;
+            pos = encodeMeasurement(message, pos, measurement);
         }
         ws.send(message);
     }
@@ -148,19 +159,11 @@ const server = http.createServer((req, res) => {
 
             // Broadcast new device message
             if (clients.length > 0) {
-                const deviceNameBytes = new TextEncoder().encode(device.name);
-
-                const message = new ArrayBuffer(1 + 16 + 2 + deviceNameBytes.length);
+                const message = new ArrayBuffer(1 + 16 + 2 + new TextEncoder().encode(device.name).length);
                 const messageView = new DataView(message);
                 let pos = 0;
-                messageView.setUint8(pos, MessageType.NEW_DEVICE); pos += 1;
-
-                const deviceIdBytes = uuid2bytes(device.id);
-                for (let i = 0; i < 16; i++) messageView.setUint8(pos++, deviceIdBytes[i]);
-
-                messageView.setUint16(pos, deviceNameBytes.length, true); pos += 2;
-                for (let i = 0; i < deviceNameBytes.length; i++) messageView.setUint8(pos++, deviceNameBytes[i]);
-
+                messageView.setUint8(pos++, MessageType.NEW_DEVICE);
+                encodeDevice(message, pos, device);
                 for (const client of clients) {
                     client.ws.send(message);
                 }
@@ -211,18 +214,10 @@ const server = http.createServer((req, res) => {
             const message = new ArrayBuffer(1 + 4 + newMeasurements.length * (16 + 16 + 1 + 4 + 4));
             const messageView = new DataView(message);
             let pos = 0;
-            messageView.setUint8(pos, MessageType.NEW_MEASUREMENTS); pos += 1;
+            messageView.setUint8(pos++, MessageType.NEW_MEASUREMENTS);
             messageView.setUint32(pos, newMeasurements.length, true); pos += 4;
             for (const measurement of newMeasurements) {
-                const measurementIdBytes = uuid2bytes(measurement.id);
-                for (let i = 0; i < 16; i++) messageView.setUint8(pos++, measurementIdBytes[i]);
-
-                const deviceIdBytes = uuid2bytes(measurement.device_id);
-                for (let i = 0; i < 16; i++) messageView.setUint8(pos++, deviceIdBytes[i]);
-
-                messageView.setUint8(pos, measurement.type); pos += 1;
-                messageView.setFloat32(pos, measurement.value, true); pos += 4;
-                messageView.setUint32(pos, measurement.created_at, true); pos += 4;
+                pos = encodeMeasurement(message, pos, measurement);
             }
             for (const client of clients) {
                 client.ws.send(message);
