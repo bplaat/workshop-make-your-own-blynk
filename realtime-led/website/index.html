@@ -20,7 +20,9 @@
 
     <script>
         // Constants
-        const MESSAGE_TYPE_LED_UPDATE = 1;
+        const MessageType = {
+            LED_UPDATE: 1
+        };
 
         // Select HTML elements
         const ledButton = document.getElementById('led-button');
@@ -51,7 +53,7 @@
             const type = messageView.getUint8(0);
 
             // If the message is a led update message update the led state
-            if (type == MESSAGE_TYPE_LED_UPDATE) {
+            if (type == MessageType.LED_UPDATE) {
                 updateLedState(messageView.getUint8(1) == 1);
             }
         });
@@ -67,7 +69,7 @@
             // Send led update message to server
             const message = new ArrayBuffer(2);
             const messageView = new DataView(message);
-            messageView.setUint8(0, MESSAGE_TYPE_LED_UPDATE);
+            messageView.setUint8(0, MessageType.LED_UPDATE);
             messageView.setUint8(1, ledState);
             ws.send(message);
         });

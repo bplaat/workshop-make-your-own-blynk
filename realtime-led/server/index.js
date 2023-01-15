@@ -1,7 +1,9 @@
 import { WebSocketServer } from 'ws';
 
 // Constants
-const MESSAGE_TYPE_LED_UPDATE = 1;
+const MessageType = {
+    LED_UPDATE: 1
+};
 const SERVER_PORT = process.env.PORT || 8080;
 
 // Led state
@@ -25,19 +27,20 @@ wss.on('connection', ws => {
         const type = messageView.getUint8(0);
 
         // When we get a led update message we read the new led state and broadcast it to all other clients
-        if (type == MESSAGE_TYPE_LED_UPDATE) {
+        if (type == MessageType.LED_UPDATE) {
             ledState = messageView.getUint8(1);
             console.log(`[WS] New led state: ${ledState == 1}`);
 
             // Send the update message to all other clients
-            const otherClients = clients.filter(client => client.ws != ws);
-            if (otherClients.length > 0) {
+            if (clients.length > 1) {
                 const broadcast = new ArrayBuffer(2);
                 const broadcastView = new DataView(broadcast);
-                broadcastView.setUint8(0, MESSAGE_TYPE_LED_UPDATE);
+                broadcastView.setUint8(0, MessageType.LED_UPDATE);
                 broadcastView.setUint8(1, ledState);
-                for (const client of otherClients) {
-                    client.ws.send(broadcast);
+                for (const client of clients) {
+                    if (client.ws != ws) {
+                        client.ws.send(broadcast);
+                    }
                 }
             }
         }
@@ -51,7 +54,7 @@ wss.on('connection', ws => {
     // Send connecting client the current led state
     const message = new ArrayBuffer(2);
     const messageView = new DataView(message);
-    messageView.setUint8(0, MESSAGE_TYPE_LED_UPDATE);
+    messageView.setUint8(0, MessageType.LED_UPDATE);
     messageView.setUint8(1, ledState);
     ws.send(message);
 });
