@@ -1,6 +1,7 @@
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
 #include <ArduinoWebsockets.h>
+#include <ESP8266WiFi.h>
+
 #include "config.h"
 
 using namespace websockets;

@@ -1,14 +1,18 @@
 // Enable or disable sensors
 // #define DHT_ENABLED
+// #define AM2320_ENABLED
 #define I2C_TEMP_ENABLED
-#define LDR_ENABLED
+// #define LDR_ENABLED
 
 // Include libraries
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <ESP8266WiFi.h>
 #ifdef DHT_ENABLED
 #include <DHT.h>
+#endif
+#ifdef AM2320_ENABLED
+#include <AM232X.h>
 #endif
 #ifdef I2C_TEMP_ENABLED
 #include <Wire.h>
@@ -24,6 +28,11 @@ uint32_t send_time = 0;
 #define DHT_PIN D1
 #ifdef DHT_ENABLED
 DHT dht(DHT_PIN, DHT_TYPE);
+#endif
+
+// The AM2320 config
+#ifdef AM2320_ENABLED
+AM232X am2320;
 #endif
 
 // The I2C temperature config
@@ -58,6 +67,10 @@ void setup() {
 #ifdef DHT_ENABLED
     dht.begin();
 #endif
+#ifdef AM2320_ENABLED
+    am2320.begin();
+    am2320.wakeUp();
+#endif
 #ifdef I2C_TEMP_ENABLED
     Wire.begin();
 #endif
@@ -81,6 +94,13 @@ void loop() {
 #ifdef DHT_ENABLED
         temperature = dht.readTemperature();
         humidity = dht.readHumidity();
+#endif
+#ifdef AM2320_ENABLED
+        int status = am2320.read();
+        if (status == AM232X_OK) {
+            temperature = am2320.getTemperature();
+            humidity = am2320.getHumidity();
+        }
 #endif
 #ifdef I2C_TEMP_ENABLED
         Wire.requestFrom(I2C_TEMP_ADDR, 1);
